@@ -1,0 +1,14 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.4.1
+Date: 18. 11. 2026
+  Features:
+    - First public release.
+    - Production graph on a canvas: recipe, mining, input and output blocks, links between ports, drag, zoom and pan.
+    - Factories: group blocks into factories with inputs and outputs, unlimited nesting, reorder ports.
+    - Automatic surplus outputs for factories.
+    - Auto and fixed blocks, machine choice, speed and productivity bonuses, mining productivity research.
+    - Belts per link, fuel for burner machines, rough inserter estimate.
+    - Electricity: power use per recipe, power plant blocks with generators, boilers and solar panels.
+    - Splitter and priority splitter blocks.
+    - Link anchors, curved or straight links, movable link labels, link colours.
+    - Pause and auto-pause, game controls blocked while the window is open, default settings window.

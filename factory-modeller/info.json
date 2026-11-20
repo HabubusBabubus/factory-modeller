@@ -1,0 +1,9 @@
+{
+  "name": "factory-modeller",
+  "version": "0.4.1",
+  "title": "Factory Modeller",
+  "author": "tolstobass",
+  "factorio_version": "2.1",
+  "dependencies": ["base >= 2.1.0"],
+  "description": "Visual production planner in the spirit of Satisfactory Modeler: build production graphs on a canvas, group parts into factories with inputs and outputs, and see rates, machine counts and power."
+}
