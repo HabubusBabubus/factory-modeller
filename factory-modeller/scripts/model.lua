@@ -491,9 +491,10 @@ function M.add_node(project, fields)
     if not node.machine then node.machine = M.default_machine(M.get_def(node.recipe)) end
     if node.fixed == nil then node.fixed = false end
     node.value = node.value or 1
-  elseif node.type == "split" then
+  elseif node.type == "split" or node.type == "wout" or node.type == "win" then
     node.fixed = false
     node.value = 0
+    if (node.type == "wout" or node.type == "win") and not node.channel then node.channel = 1 end
   elseif node.type == "gen" then
     node.fixed = true
     node.value = node.value or 1
@@ -730,6 +731,14 @@ function M.node_ports(project, node)
         end
       end
     end
+  elseif node.type == "wout" then
+    -- wireless output: takes items in, sends them over its channel ("wl" is not drawn)
+    ins[1] = { key = "in", item = node.item, per_x = 1 }
+    outs[1] = { key = "wl", item = node.item, per_x = 1 }
+  elseif node.type == "win" then
+    -- wireless input: receives from the outputs on the same channel, gives items out
+    ins[1] = { key = "wl", item = node.item, per_x = 1 }
+    outs[1] = { key = "out", item = node.item, per_x = 1 }
   elseif node.type == "psplit" then
     ins[1] = { key = "in", item = node.item, per_x = 1 }
     for i, sid in pairs(node.slots or {}) do
@@ -754,7 +763,44 @@ function M.visible_ports(project, node)
   local ins, outs = M.node_ports(project, node)
   if node.type == "input" then return {}, outs end
   if node.type == "output" then return ins, {} end
+  if node.type == "wout" then return ins, {} end
+  if node.type == "win" then return {}, outs end
   return ins, outs
+end
+
+-------------------------------------------------------------------------------
+-- Wireless links: outputs and inputs with the same channel number inside one factory
+-------------------------------------------------------------------------------
+-- wireless blocks of a factory on a channel
+function M.wireless_on(project, factory_id, channel, kind)
+  local list = {}
+  for _, n in pairs(project.nodes) do
+    if n.parent == factory_id and n.type == kind and n.channel == channel then list[#list + 1] = n end
+  end
+  table.sort(list, function(a, b) return a.id < b.id end)
+  return list
+end
+
+-- smallest channel number not used by any wireless output of the factory
+function M.free_channel(project, factory_id)
+  local used = {}
+  for _, n in pairs(project.nodes) do
+    if n.parent == factory_id and n.type == "wout" and n.channel then used[n.channel] = true end
+  end
+  local c = 1
+  while used[c] do c = c + 1 end
+  return c
+end
+
+-- wireless inputs without an item take it from the outputs on their channel
+function M.sync_wireless(project)
+  for _, n in pairs(project.nodes) do
+    if n.type == "win" and not n.item then
+      for _, o in pairs(M.wireless_on(project, n.parent, n.channel, "wout")) do
+        if o.item then n.item = o.item break end
+      end
+    end
+  end
 end
 
 function M.find_port(project, node, key, dir)

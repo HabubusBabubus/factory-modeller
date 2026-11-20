@@ -22,6 +22,8 @@ local COLORS = {
   split = { 0.5, 0.3, 0.7, 1 },
   psplit = { 0.62, 0.22, 0.55, 1 },
   gen = { 0.75, 0.62, 0.12, 1 },
+  wout = { 0.12, 0.55, 0.55, 1 },
+  win = { 0.12, 0.55, 0.55, 1 },
   plant = { 0.7, 0.5, 0.1, 1 },
   text = { 0.95, 0.95, 0.95, 1 },
   dim = { 0.65, 0.65, 0.7, 1 },
@@ -113,7 +115,7 @@ end
 function R.layout(project, node)
   local ins, outs = model.visible_ports(project, node)
   local w = node.type == "factory" and R.FACTORY_W or R.NODE_W
-  if node.type == "input" or node.type == "output" or node.type == "split" then w = 6 end
+  if node.type == "input" or node.type == "output" or node.type == "split" or node.type == "wout" or node.type == "win" then w = 6 end
   if node.type == "psplit" or node.type == "gen" then w = 8 end
   local rows = math.max(#ins, #outs, 1)
   local h = R.HEADER_H + rows * R.ROW_H + 0.5
@@ -575,6 +577,21 @@ function R.draw_factory(project, factory_id)
         text({ "fm.r-set-item" }, x1, y1 - 0.45, COLORS.bad, 0.8, "left")
       end
       text(R.fmt(r.x or 0), x2 - 0.2, hy, n.fixed and COLORS.warn or COLORS.text, 1.0, "right")
+    elseif n.type == "wout" or n.type == "win" then
+      text({ n.type == "wout" and "fm.r-wout" or "fm.r-win" }, x1 + 0.25, hy, COLORS.text, 0.9, "left")
+      text("#" .. tostring(n.channel or 0), x2 - 0.2, hy, COLORS.warn, 1.15, "right")
+      if n.item and model.key_valid(n.item) then
+        sprite(n.item, x2 - 1.6, hy, 0.45)
+      else
+        text({ "fm.r-split-hint" }, x1, y1 - 0.45, COLORS.dim, 0.8, "left")
+      end
+      -- how many partners on the channel
+      local other = model.wireless_on(project, n.parent, n.channel, n.type == "wout" and "win" or "wout")
+      if #other == 0 then
+        text({ "fm.r-wireless-none" }, x1, y2 + 0.45, COLORS.bad, 0.7, "left")
+      else
+        text({ "fm.r-wireless-n", #other }, x1, y2 + 0.45, COLORS.dim, 0.7, "left")
+      end
     elseif n.type == "gen" then
       if n.entity and prototypes.entity[n.entity] then
         sprite("entity/" .. n.entity, x1 + 0.75, hy, 0.5)

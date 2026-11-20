@@ -40,6 +40,12 @@
 - **Разделитель** — сводит и разводит поток одного предмета; на входящей связи видно общее число лент.
 - **Приоритетный делитель** — сначала заполняет выход №1, потом №2 и т.д.; выход для излишка; приоритеты меняются стрелками без перекладки связей.
 
+### Беспроводные связи
+
+- **Беспроводной выход** и **беспроводной вход** с номером канала: предмет передаётся без провода между блоками с одинаковым каналом внутри одной фабрики.
+- Несколько выходов на канале складываются, несколько входов делят поток по потребности.
+- Снаружи фабрики к каналу не подключиться — схемы остаются чистыми, без длинных и закольцованных связей.
+
 ### Оформление схем
 - **Якоря на связях**: колёсико мыши на связи добавляет точку, её можно тянуть; якоря прилипают, чтобы линия становилась прямой.
 - Два вида связей: кривые или прямые (горизонтально, потом вертикально).
@@ -110,6 +116,7 @@ No tables: a graph on a canvas instead — recipe blocks, links between them, fa
 - **Surplus to outputs:** every surplus inside a factory automatically becomes one of its outputs, even from deeply nested blocks.
 - **Auto / Fixed** blocks, machine choice, speed and productivity bonuses, **mining productivity research** applied automatically, **fuel** for burner machines, rough inserter estimate.
 - **Electricity:** each recipe shows its draw; a **Power plant** block holds steam engines, turbines, boilers, solar panels and pumps. Plants feed their own factory and nested ones; the rest comes from the outer factory. Load and deficit are shown.
+- **Wireless links:** wireless outputs and inputs with the same channel number inside one factory are connected without a link — no long or looping wires. Not reachable from outside the factory.
 - **Splitter** and **priority splitter** (outputs filled in priority order, overflow output, reorder priorities without relinking).
 - **Pretty layouts:** anchors on links (middle mouse button) that snap to straight lines, curved or straight-line links, movable link labels, link colours, grid snapping.
 - **Comfort:** full-screen window, several projects per save, pause button and auto-pause, game controls blocked while the window is open, defaults for belts, inserters, fuel and machines.

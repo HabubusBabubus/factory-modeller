@@ -55,6 +55,23 @@ function S.solve(project)
     end
   end
 
+  -- wireless: every output on a channel is linked to every input on the same channel in the same factory
+  for _, o in pairs(nodes) do
+    if o.node.type == "wout" and o.node.item then
+      for _, w in pairs(nodes) do
+        local wn = w.node
+        if wn.type == "win" and wn.parent == o.node.parent and wn.channel == o.node.channel and wn.item == o.node.item then
+          local sl = { id = "w" .. o.id .. "_" .. w.id, fn = o.id, fp = "wl", tn = w.id, tp = "wl", demand = 0, flow = 0, push = false, wireless = true }
+          links[#links + 1] = sl
+          o.out_links["wl"] = o.out_links["wl"] or {}
+          table.insert(o.out_links["wl"], sl)
+          w.in_links["wl"] = w.in_links["wl"] or {}
+          table.insert(w.in_links["wl"], sl)
+        end
+      end
+    end
+  end
+
   -- modes
   for _, sn in pairs(nodes) do
     local n = sn.node
@@ -74,6 +91,8 @@ function S.solve(project)
       sn.state = "fixed"
     end
     sn.has_in = next(sn.in_links) ~= nil
+    -- a wireless input only ever gives what arrives over its channel (nothing, if no output is there)
+    if n.type == "win" then sn.has_in = true end
     if n.auto then sn.state = "push" end
     -- an OUT block inside a factory gets only what is left after the other consumers
     if n.type == "output" and n.parent ~= project.root then sn.low = true end
@@ -98,7 +117,7 @@ function S.solve(project)
     --    factories can travel out.
     for _, sn in pairs(nodes) do
       local t = sn.node.type
-      if (t == "input" or t == "output" or t == "split") and sn.has_in then
+      if (t == "input" or t == "output" or t == "split" or t == "wout" or t == "win") and sn.has_in then
         local ab = false
         for _, ls in pairs(sn.out_links) do
           for _, l in pairs(ls) do
@@ -157,8 +176,8 @@ function S.solve(project)
           local avail = sn.x * sn.outs[port]
           -- pass-through blocks can only pass on what they actually receive
           local t = sn.node.type
-          if (t == "input" or t == "output" or t == "split") and sn.has_in then
-            local got = ((received[sn.id] or {})["in"]) or 0
+          if (t == "input" or t == "output" or t == "split" or t == "wout" or t == "win") and sn.has_in then
+            local got = ((received[sn.id] or {})[t == "win" and "wl" or "in"]) or 0
             if sn.absorb then avail = got else avail = math.min(avail, got) end
           end
           -- three priorities: ordinary consumers, then factory outputs (OUT blocks inside a factory),
@@ -406,7 +425,7 @@ end
 -- Surplus that could flow into a node: unused production of everything feeding it,
 -- looking through pass-through nodes (inputs/outputs of factories, splitters).
 -------------------------------------------------------------------------------
-local PASS = { input = true, output = true, split = true }
+local PASS = { input = true, output = true, split = true, wout = true, win = true }
 function S.extra_into(nodes, res, id, seen)
   seen = seen or {}
   if seen[id] then return 0 end
@@ -542,6 +561,7 @@ function S.sync_auto_outputs(project)
 end
 
 function S.solve_all(project)
+  model.sync_wireless(project)
   local res = S.solve(project)
   for _ = 1, 4 do
     if not S.sync_auto_outputs(project) then break end

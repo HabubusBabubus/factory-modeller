@@ -819,6 +819,66 @@ do
   print("mining research OK")
 end
 
+-- wireless links inside a factory
+do
+  local pw = model.create_project("wireless")
+  local F = model.add_node(pw, { type = "factory", parent = pw.root })
+  local G = model.add_node(pw, { type = "factory", parent = pw.root })
+  local saved_p, saved_f = ps.project, ps.factory
+  local prod = model.add_node(pw, { type = "recipe", recipe = "iron-gear-wheel", machine = "assembling-machine-2", parent = F.id, fixed = false })
+  local wo = model.add_node(pw, { type = "wout", parent = F.id, channel = 7 })
+  local wi = model.add_node(pw, { type = "win", parent = F.id, channel = 7 })
+  local user = model.add_node(pw, { type = "recipe", recipe = "gear-user", machine = "assembling-machine-2", parent = F.id, fixed = true, value = 1 }) -- 1.5 gears/s
+  -- link like the GUI does, so the wireless output takes the item
+  ps.project, ps.factory = pw.id, F.id
+  local function connect(a, ap, ad, b, bp, bd)
+    local pa = model.find_port(pw, a, ap, ad)
+    local pb = model.find_port(pw, b, bp, bd)
+    if a.type == "wout" or a.type == "win" then if not a.item then a.item = pb.item end end
+    if b.type == "wout" or b.type == "win" then if not b.item then b.item = pa.item end end
+    return model.add_link(pw, a.id, ap, b.id, bp)
+  end
+  connect(prod, "item/iron-gear-wheel", "out", wo, "in", "in")
+  solver.solve_all(pw)
+  assert(wi.item == "item/iron-gear-wheel", "wireless input took the item of its channel")
+  model.add_link(pw, wi.id, "out", user.id, "item/iron-gear-wheel")
+  solver.solve_all(pw)
+  approx(pw.results.nodes[user.id].ins["item/iron-gear-wheel"].received, 1.5, "consumer fed without a wire")
+  approx(pw.results.nodes[prod.id].x, 1.5 / 1.5, "producer pulled through the channel")
+  -- another channel: nothing arrives
+  wi.channel = 8
+  solver.solve_all(pw)
+  approx(pw.results.nodes[user.id].ins["item/iron-gear-wheel"].received, 0, "other channel: nothing")
+  wi.channel = 7
+  -- the same channel in another factory is not connected
+  local wi2 = model.add_node(pw, { type = "win", parent = G.id, channel = 7, item = "item/iron-gear-wheel" })
+  local user2 = model.add_node(pw, { type = "recipe", recipe = "gear-user", machine = "assembling-machine-2", parent = G.id, fixed = true, value = 1 })
+  model.add_link(pw, wi2.id, "out", user2.id, "item/iron-gear-wheel")
+  solver.solve_all(pw)
+  approx(pw.results.nodes[user2.id].ins["item/iron-gear-wheel"].received, 0, "channels do not cross factories")
+  approx(pw.results.nodes[user.id].ins["item/iron-gear-wheel"].received, 1.5, "own factory still fed")
+  -- a second input on the channel shares
+  local wi3 = model.add_node(pw, { type = "win", parent = F.id, channel = 7 })
+  local user3 = model.add_node(pw, { type = "recipe", recipe = "gear-user", machine = "assembling-machine-2", parent = F.id, fixed = true, value = 2 })
+  solver.solve_all(pw)
+  model.add_link(pw, wi3.id, "out", user3.id, "item/iron-gear-wheel")
+  solver.solve_all(pw)
+  approx(pw.results.nodes[prod.id].x, (1.5 + 3) / 1.5, "producer feeds both inputs")
+  approx(pw.results.nodes[user3.id].ins["item/iron-gear-wheel"].received, 3, "second input fed")
+  -- GUI bits
+  gui.refresh_all(player, ps)
+  for _, id in pairs({ wo.id, wi.id }) do ps.selection = { [id] = true } gui.refresh_inspector(player, ps) end
+  render.draw_factory(pw, F.id)
+  handlers.on_gui_click({ player_index = 1, element = { valid = true, name = "b", type = "button", tags = { fm = "add_wout" } }, button = 1 })
+  local newest
+  for _, n in pairs(pw.nodes) do if n.type == "wout" and n.parent == F.id and n.id ~= wo.id then newest = n end end
+  assert(newest and newest.channel == 1, "new wireless output gets a free channel, got " .. tostring(newest and newest.channel))
+  handlers.on_gui_text_changed({ player_index = 1, element = { valid = true, text = "7", tags = { fm = "set_channel", node = newest.id } } })
+  assert(newest.channel == 7, "channel edited")
+  ps.project, ps.factory = saved_p, saved_f
+  print("wireless OK")
+end
+
 -- fuel for burner furnaces
 do
   local p7 = model.create_project("fuel")

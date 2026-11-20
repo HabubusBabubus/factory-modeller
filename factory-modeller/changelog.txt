@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.5.0
+Date: 20. 11. 2026
+  Features:
+    - Wireless outputs and inputs: blocks with the same channel number inside one factory are connected without a link. Several outputs on a channel add up, several inputs share by demand. Not reachable from outside the factory.
+---------------------------------------------------------------------------------------------------
 Version: 0.4.1
 Date: 18. 11. 2026
   Features:

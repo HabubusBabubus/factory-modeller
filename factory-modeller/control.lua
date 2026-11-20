@@ -174,10 +174,28 @@ local function try_link(project, a, b)
   local n1, n2 = project.nodes[from.node], project.nodes[to.node]
   if not n1 or not n2 or n1.parent ~= n2.parent then return nil end
   -- a splitter without an item takes the item of the first link
-  if (n1.type == "split" or n1.type == "psplit") and not n1.item and to.item then n1.item = to.item from.item = to.item end
-  if (n2.type == "split" or n2.type == "psplit") and not n2.item and from.item then n2.item = from.item to.item = from.item end
+  local ADOPT = { split = true, psplit = true, wout = true, win = true }
+  if ADOPT[n1.type] and not n1.item and to.item then n1.item = to.item from.item = to.item end
+  if ADOPT[n2.type] and not n2.item and from.item then n2.item = from.item to.item = from.item end
   if from.item == nil or from.item ~= to.item then return nil end
   return model.add_link(project, from.node, from.port, to.node, to.port)
+end
+
+-- channel for a new wireless block: outputs get a free channel; inputs pick the channel of an
+-- output carrying the same item (or the newest output), else 1
+local function default_channel(project, factory_id, kind, item)
+  if kind == "wout" then return model.free_channel(project, factory_id) end
+  local best
+  for _, n in pairs(project.nodes) do
+    if n.parent == factory_id and n.type == "wout" then
+      if item and n.item == item then
+        if not best or best.item ~= item or n.id > best.id then best = n end
+      elseif not best or (best.item ~= item and n.id > best.id) then
+        best = n
+      end
+    end
+  end
+  return best and best.channel or 1
 end
 
 -- Create a node at local position pos, optionally connected to a pending port.
@@ -188,6 +206,9 @@ local function create_from_choice(player, ps, project, choice, pos, port)
     node = model.add_node(project, { type = "recipe", recipe = choice.recipe, parent = ps.factory, x = x, y = y, fixed = port == nil })
   elseif choice.kind == "split" or choice.kind == "psplit" then
     node = model.add_node(project, { type = choice.kind, item = choice.item, parent = ps.factory, x = x, y = y })
+  elseif choice.kind == "wout" or choice.kind == "win" then
+    node = model.add_node(project, { type = choice.kind, item = choice.item, parent = ps.factory, x = x, y = y,
+      channel = default_channel(project, ps.factory, choice.kind, choice.item) })
   elseif choice.kind == "input" or choice.kind == "output" then
     -- an OUT block inside a factory starts in auto mode: it passes on whatever is left over
     node = model.add_node(project, { type = choice.kind, item = choice.item, parent = ps.factory, x = x, y = y,
@@ -228,10 +249,14 @@ local function open_port_picker(player, ps, project, port, loc, pos)
     tags = { fm = "pick", kind = io, item = port.item },
   })
   if not helpers.is_valid_sprite_path(entries[1].sprite) then entries[1].sprite = "utility/add" end
+  -- wireless: from an output port send it away, into an input port receive it
+  table.insert(entries, 2, { sprite = (port.dir == "out") and "item/radar" or "item/constant-combinator",
+    tooltip = { (port.dir == "out") and "fm.pick-wout" or "fm.pick-win" }, tags = { fm = "pick", kind = (port.dir == "out") and "wout" or "win", item = port.item } })
+  if not helpers.is_valid_sprite_path(entries[2].sprite) then entries[2].sprite = "utility/add" end
   if prototypes.entity["splitter"] then
-    table.insert(entries, 2, { sprite = "entity/splitter", tooltip = { "fm.pick-split" }, tags = { fm = "pick", kind = "split", item = port.item } })
+    table.insert(entries, 3, { sprite = "entity/splitter", tooltip = { "fm.pick-split" }, tags = { fm = "pick", kind = "split", item = port.item } })
     local ps_sprite = prototypes.entity["fast-splitter"] and "entity/fast-splitter" or "entity/splitter"
-    table.insert(entries, 3, { sprite = ps_sprite, tooltip = { "fm.pick-psplit" }, tags = { fm = "pick", kind = "psplit", item = port.item } })
+    table.insert(entries, 4, { sprite = ps_sprite, tooltip = { "fm.pick-psplit" }, tags = { fm = "pick", kind = "psplit", item = port.item } })
   end
   gui.popup(player, loc, { "fm.picker-title", model.rich(port.item) }, entries, true)
 end
@@ -679,6 +704,16 @@ actions.add_plant = function(player, ps, project)
   update(project)
 end
 
+local function add_wireless(player, ps, project, kind)
+  local x, y = view_center(ps)
+  local n = model.add_node(project, { type = kind, parent = ps.factory, x = snap(x), y = snap(y),
+    channel = default_channel(project, ps.factory, kind, nil) })
+  select_only(ps, n.id)
+  update(project)
+end
+actions.add_wout = function(player, ps, project) add_wireless(player, ps, project, "wout") end
+actions.add_win = function(player, ps, project) add_wireless(player, ps, project, "win") end
+
 actions.add_split = function(player, ps, project)
   local x, y = view_center(ps)
   local n = model.add_node(project, { type = "split", parent = ps.factory, x = snap(x), y = snap(y) })
@@ -1054,6 +1089,21 @@ local function on_text_changed(e)
       for _, p in pairs(game.connected_players) do
         if gui.is_open(p) then gui.refresh_top(p, pstate_of(p), p == player) end
       end
+    end
+    return
+  end
+  if t.fm == "set_channel" then
+    local n = project.nodes[t.node]
+    local v = tonumber(el.text)
+    if n and v and v >= 0 then
+      n.channel = math.floor(v)
+      if n.type == "win" then
+        -- take the item of the new channel unless links already fix it
+        local linked = false
+        for _, l in pairs(project.links) do if l.from.node == n.id then linked = true end end
+        if not linked then n.item = nil end
+      end
+      update(project, { keep_inspector = player.index })
     end
     return
   end

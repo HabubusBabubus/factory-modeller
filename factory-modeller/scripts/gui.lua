@@ -136,6 +136,9 @@ function G.build(player, pstate)
   local af = lsp.add({ type = "flow", direction = "horizontal" })
   af.add({ type = "button", caption = T("add-split"), tooltip = T("add-split-tt"), tags = act("add_split") })
   lsp.add({ type = "button", caption = T("add-psplit"), tooltip = T("add-psplit-tt"), tags = act("add_psplit") }).style.horizontally_stretchable = true
+  local wf = lsp.add({ type = "flow", direction = "horizontal" })
+  wf.add({ type = "button", caption = T("add-wout"), tooltip = T("add-wireless-tt"), tags = act("add_wout") })
+  wf.add({ type = "button", caption = T("add-win"), tooltip = T("add-wireless-tt"), tags = act("add_win") })
   local pf = lsp.add({ type = "flow", direction = "horizontal" })
   pf.style.vertical_align = "center"
   pf.add({ type = "button", caption = T("add-plant"), tooltip = T("add-plant-tt"), tags = act("add_plant") })
@@ -717,6 +720,33 @@ function G.refresh_inspector(player, pstate)
         il.style.width = G.RIGHT_W - 30
       end
     end
+  elseif node.type == "wout" or node.type == "win" then
+    box.add({ type = "label", caption = node.type == "wout" and T("wout-node") or T("win-node"), style = "bold_label" })
+    local f = row(T("item"))
+    local t, nm = model.split_key(node.item)
+    f.add({ type = "choose-elem-button", elem_type = "item", item = (t == "item" and prototypes.item[nm]) and nm or nil, tags = act("set_item", { node = node.id, t = "item" }) })
+    f.add({ type = "choose-elem-button", elem_type = "fluid", fluid = (t == "fluid" and prototypes.fluid[nm]) and nm or nil, tags = act("set_item", { node = node.id, t = "fluid" }) })
+    local cr = row(T("channel"))
+    local tf = cr.add({ type = "textfield", text = tostring(node.channel or 0), numeric = true, allow_decimal = false, allow_negative = false,
+      tags = act("set_channel", { node = node.id }), lose_focus_on_confirm = true, tooltip = T("channel-tt") })
+    tf.style.width = 70
+    box.add({ type = "label", caption = T("current", render.fmt(r.x or 0) .. rate_unit_caption()) })
+    local other_kind = node.type == "wout" and "win" or "wout"
+    local others = model.wireless_on(project, node.parent, node.channel, other_kind)
+    local same, wrong = 0, 0
+    for _, o in pairs(others) do
+      if o.item == node.item then same = same + 1 else wrong = wrong + 1 end
+    end
+    local l = box.add({ type = "label", caption = node.type == "wout" and T("wout-partners", same) or T("win-partners", same) })
+    if same == 0 then l.style.font_color = { 1, 0.45, 0.35 } end
+    if wrong > 0 then
+      local w = box.add({ type = "label", caption = T("wireless-wrong-item", wrong) })
+      w.style.font_color = { 1, 0.65, 0.3 }
+    end
+    local hint = box.add({ type = "label", caption = T("wireless-hint") })
+    hint.style.single_line = false
+    hint.style.width = G.RIGHT_W - 30
+    port_table(box, project, node, res)
   elseif node.type == "gen" then
     local ep = node.entity and prototypes.entity[node.entity]
     local f = row()
