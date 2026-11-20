@@ -292,6 +292,15 @@ local function canvas_click(player, ps, project, pos, loc, e, forced_hit, from_h
   end
   gui.close_popup(player)
   local pl = ps.pending_link
+  -- the wireless circle is its own port: clicking it while a link is pending connects to it
+  if pl and hit and hit.kind == "node" then
+    local wn = project.nodes[hit.node]
+    if wn and (wn.type == "wout" or wn.type == "win") then
+      local L = render.layout(project, wn)
+      local p = (wn.type == "wout") and L.ins[1] or L.outs[1]
+      hit = { kind = "port", node = wn.id, port = p.key, dir = (wn.type == "wout") and "in" or "out", item = wn.item or pl.item }
+    end
+  end
   if pl then
     ps.pending_link = nil
     if hit and hit.kind == "port" then

@@ -112,10 +112,23 @@ end
 -------------------------------------------------------------------------------
 -- Layout (positions are relative to the factory region origin)
 -------------------------------------------------------------------------------
+R.WIRELESS_R = 0.32 -- radius of the small wireless circle (about a port)
+
 function R.layout(project, node)
+  if node.type == "wout" or node.type == "win" then
+    -- a small circle centred on (x + 0.5, y): its port sits on the whole-tile row y
+    local cx, cy = node.x + 0.5, node.y
+    local L = { x = node.x, y = node.y - 0.5, w = 1, h = 1, ins = {}, outs = {}, cx = cx, cy = cy, compact = true }
+    if node.type == "wout" then
+      L.ins[1] = { key = "in", item = node.item, x = cx - R.WIRELESS_R, y = cy }
+    else
+      L.outs[1] = { key = "out", item = node.item, x = cx + R.WIRELESS_R, y = cy }
+    end
+    return L
+  end
   local ins, outs = model.visible_ports(project, node)
   local w = node.type == "factory" and R.FACTORY_W or R.NODE_W
-  if node.type == "input" or node.type == "output" or node.type == "split" or node.type == "wout" or node.type == "win" then w = 6 end
+  if node.type == "input" or node.type == "output" or node.type == "split" then w = 6 end
   if node.type == "psplit" or node.type == "gen" then w = 8 end
   local rows = math.max(#ins, #outs, 1)
   local h = R.HEADER_H + rows * R.ROW_H + 0.5
@@ -412,6 +425,41 @@ local function port_color(r, dir)
   end
 end
 
+-- Compact wireless block: a small circle with an arrow and the channel label.
+-- Output: arrow points INTO the circle, label on the right. Input: arrow points OUT of it, label on the left.
+function R.draw_wireless(project, n, L, r, keep, P, text, sprite)
+  local surface = R.get_surface()
+  local cx, cy, rad = L.cx, L.cy, R.WIRELESS_R
+  local others = model.wireless_on(project, n.parent, n.channel, n.type == "wout" and "win" or "wout")
+  local paired = false
+  for _, o in pairs(others) do if o.item == n.item then paired = true end end
+  local col = paired and COLORS.wout or COLORS.bad
+  -- status of the flow through it
+  local pr = (n.type == "wout") and (r.ins or {})["in"] or (r.outs or {})["out"]
+  keep(rendering.draw_circle({ surface = surface, target = P(cx, cy), radius = rad + 0.06, color = { 0, 0, 0, 0.6 }, filled = true }))
+  keep(rendering.draw_circle({ surface = surface, target = P(cx, cy), radius = rad, color = col, filled = true }))
+  -- arrow (a small triangle pointing right) in the circle
+  local h = rad * 0.55
+  local ax = cx + ((n.type == "wout") and -0.04 or 0.04)
+  keep(rendering.draw_polygon({ surface = surface, color = { 1, 1, 1, 0.95 },
+    vertices = { P(ax - h * 0.8, cy - h), P(ax - h * 0.8, cy + h), P(ax + h, cy) } }))
+  -- a short stem on the side of the link, so it reads "into" or "out of" the circle
+  if n.type == "wout" then
+    keep(rendering.draw_line({ surface = surface, from = P(cx - rad - 0.25, cy), to = P(cx - rad, cy), color = col, width = 3 }))
+  else
+    keep(rendering.draw_line({ surface = surface, from = P(cx + rad, cy), to = P(cx + rad + 0.25, cy), color = col, width = 3 }))
+  end
+  local icon = (n.item and model.key_valid(n.item)) and (model.rich(n.item) .. " ") or ""
+  local label = icon .. "#" .. tostring(n.channel or 0)
+  if pr then label = label .. "  " .. R.fmt(n.type == "wout" and (pr.received or 0) or (pr.produced or 0)) end
+  if not paired then label = "[color=1,0.4,0.3]" .. label .. "[/color]" end
+  if n.type == "wout" then
+    text(label, cx + rad + 0.2, cy, COLORS.text, 0.85, "left", true)
+  else
+    text(label, cx - rad - 0.2, cy, COLORS.text, 0.85, "right", true)
+  end
+end
+
 local function sprite_ok(path)
   return path and helpers.is_valid_sprite_path(path)
 end
@@ -539,6 +587,9 @@ function R.draw_factory(project, factory_id)
   for _, n in pairs(model.visible_children(project, factory_id)) do
     local L = R.layout(project, n)
     local r = res.nodes[n.id] or { ins = {}, outs = {}, x = 0 }
+    if L.compact then
+      R.draw_wireless(project, n, L, r, keep, P, text, sprite)
+    else
     local x1, y1, x2, y2 = L.x, L.y, L.x + L.w, L.y + L.h
     rect(x1 + 0.15, y1 + 0.15, x2 + 0.15, y2 + 0.15, COLORS.shadow, true)
     rect(x1, y1, x2, y2, COLORS.body, true)
@@ -687,6 +738,7 @@ function R.draw_factory(project, factory_id)
         s = s .. " #" .. i .. (sid == n.overflow and "[color=1,0.85,0.3]*[/color]" or "")
       end
       text(s, p.x - 0.45, p.y, COLORS.text, 0.85, "right", true)
+    end
     end
   end
   project.render[factory_id] = ids

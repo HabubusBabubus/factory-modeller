@@ -875,6 +875,24 @@ do
   assert(newest and newest.channel == 1, "new wireless output gets a free channel, got " .. tostring(newest and newest.channel))
   handlers.on_gui_text_changed({ player_index = 1, element = { valid = true, text = "7", tags = { fm = "set_channel", node = newest.id } } })
   assert(newest.channel == 7, "channel edited")
+  -- compact look: a small circle on the grid row; a pending link + click on the circle connects
+  local Lw = render.layout(pw, newest)
+  assert(Lw.compact and Lw.w == 1 and Lw.ins[1].y == newest.y, "wireless is a small circle on its row")
+  local prod2 = model.add_node(pw, { type = "recipe", recipe = "iron-gear-wheel", machine = "assembling-machine-2", parent = F.id, fixed = true, value = 1, x = newest.x - 12, y = newest.y - 2 })
+  newest.item = nil
+  ps.selection = {}
+  gui.refresh_all(player, ps)
+  handlers.on_gui_click({ player_index = 1, element = { valid = true, name = "b", type = "button", tags = { fm = "fit" } }, button = 1 })
+  project = pw
+  local P2 = render.layout(pw, prod2)
+  click({ x = P2.outs[1].x, y = P2.outs[1].y })
+  assert(ps.pending_link, "link started")
+  local Lw2 = render.layout(pw, newest)
+  click({ x = Lw2.cx, y = Lw2.cy })
+  local linked = false
+  for _, l in pairs(pw.links) do if l.from.node == prod2.id and l.to.node == newest.id then linked = true end end
+  assert(linked and newest.item == "item/iron-gear-wheel", "linked into the wireless circle")
+  render.draw_factory(pw, F.id)
   ps.project, ps.factory = saved_p, saved_f
   print("wireless OK")
 end

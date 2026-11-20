@@ -337,7 +337,12 @@ function G.refresh_handles(player, pstate)
 
   for _, n in pairs(model.visible_children(project, pstate.factory)) do
     local L = render.layout(project, n)
-    add_handle(n.id, act("handle", { node = n.id }), L.x + G.HANDLE_INSET, L.y, L.x + L.w - G.HANDLE_INSET, L.y + L.h, n)
+    if L.compact then
+      local rad = render.WIRELESS_R + 0.05
+      add_handle(n.id, act("handle", { node = n.id }), L.cx - rad, L.cy - rad, L.cx + rad, L.cy + rad, n)
+    else
+      add_handle(n.id, act("handle", { node = n.id }), L.x + G.HANDLE_INSET, L.y, L.x + L.w - G.HANDLE_INSET, L.y + L.h, n)
+    end
   end
   local links = model.visible_links(project, pstate.factory)
   for _, l in pairs(links) do

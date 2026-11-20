@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.5.1
+Date: 20. 11. 2026
+  Changes:
+    - Wireless outputs and inputs are now small circles with an arrow (into the circle for an output, out of it for an input) and the channel label next to them, instead of full blocks.
+---------------------------------------------------------------------------------------------------
 Version: 0.5.0
 Date: 20. 11. 2026
   Features:
