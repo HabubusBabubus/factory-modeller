@@ -17,3 +17,6 @@ Thumbs.db
 desktop.ini
 .DS_Store
 $RECYCLE.BIN/
+
+# Files saved here by the Claude app
+Claude outputs/
