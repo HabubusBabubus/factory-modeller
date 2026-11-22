@@ -270,6 +270,9 @@ local function open_node_menu(player, ps, project, node, loc)
   if node.type ~= "factory" then
     entries[#entries + 1] = { caption = node.fixed and { "fm.make-auto" } or { "fm.make-fixed" }, tags = { fm = "toggle_fixed", node = node.id } }
   end
+  if node.type == "recipe" or node.type == "factory" then
+    entries[#entries + 1] = { caption = node.built and { "fm.unmark-built" } or { "fm.mark-built" }, tags = { fm = "toggle_built", node = node.id } }
+  end
   entries[#entries + 1] = { caption = { "fm.duplicate" }, tags = { fm = "duplicate_sel" } }
   entries[#entries + 1] = { caption = { "fm.delete" }, tags = { fm = "delete_sel" } }
   gui.popup(player, loc, nil, entries, false)
@@ -913,6 +916,14 @@ actions.set_machine = function(player, ps, project, e)
   update(project)
 end
 
+actions.toggle_built = function(player, ps, project, e)
+  gui.close_popup(player)
+  local n = project.nodes[e.tags.node]
+  if not n then return end
+  n.built = (not n.built) or nil
+  update(project)
+end
+
 actions.toggle_fixed = function(player, ps, project, e)
   gui.close_popup(player)
   local n = project.nodes[e.tags.node]
@@ -1437,6 +1448,15 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(e)
     for _, project in pairs(storage.projects) do update(project) end
     for _, p in pairs(game.connected_players) do
       if p.gui.screen.fm_settings then gui.settings_window(p, pstate_of(p)) end
+    end
+    return
+  end
+  if el.tags.fm == "built" then
+    local project = storage.projects[ps.project]
+    local n = project and project.nodes[el.tags.node]
+    if n then
+      n.built = el.state or nil
+      update(project, { keep_inspector = player.index })
     end
     return
   end

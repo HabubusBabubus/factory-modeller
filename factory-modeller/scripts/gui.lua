@@ -658,6 +658,9 @@ function G.refresh_inspector(player, pstate)
       b.style.size = 36
     end
 
+    local bc = box.add({ type = "checkbox", state = node.built or false, caption = T("built"), tooltip = T("built-tt"), tags = act("built", { node = node.id }) })
+    bc.style.top_margin = 4
+
     local mode = row(T("mode"))
     mode.add({ type = "switch", left_label_caption = T("auto"), right_label_caption = T("fixed"), switch_state = node.fixed and "right" or "left", tags = act("set_fixed", { node = node.id }), left_label_tooltip = T("auto-tt"), right_label_tooltip = T("fixed-tt") })
 
@@ -867,6 +870,7 @@ function G.refresh_inspector(player, pstate)
         l.style.font_color = { 1, 0.6, 0.35 }
       end
     end
+    box.add({ type = "checkbox", state = node.built or false, caption = T("built-factory"), tooltip = T("built-factory-tt"), tags = act("built", { node = node.id }) })
     box.add({ type = "checkbox", state = node.plant or false, caption = T("is-plant"), tooltip = T("is-plant-tt"), tags = act("is_plant", { node = node.id }) })
     box.add({ type = "checkbox", state = node.auto_outputs or false, caption = T("auto-outputs"), tooltip = T("auto-outputs-tt"), tags = act("auto_outputs", { node = node.id }) })
     local cb2 = box.add({ type = "checkbox", state = node.auto_outputs_unlinked or false, caption = T("auto-outputs-unlinked"), tooltip = T("auto-outputs-unlinked-tt"), tags = act("auto_outputs_unlinked", { node = node.id }) })

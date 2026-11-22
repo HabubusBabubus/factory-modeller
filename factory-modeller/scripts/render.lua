@@ -32,6 +32,7 @@ local COLORS = {
   warn = { 1, 0.8, 0.2, 1 },
   idle = { 0.55, 0.55, 0.6, 1 },
   select = { 1, 0.85, 0.2, 1 },
+  built = { 0.3, 0.9, 0.35, 1 },
   pending = { 0.3, 0.8, 1, 1 },
 }
 R.COLORS = COLORS
@@ -602,6 +603,10 @@ function R.draw_factory(project, factory_id)
     if n.type == "factory" and n.plant then hc = COLORS.plant end
     rect(x1, y1, x2, y1 + R.HEADER_H, hc, true)
     rect(x1, y1, x2, y2, COLORS.border, false, 1)
+    if n.built then
+      -- already built in the world: green outline
+      rect(x1 - 0.06, y1 - 0.06, x2 + 0.06, y2 + 0.06, COLORS.built, false, 4)
+    end
 
     local hy = y1 + R.HEADER_H / 2
     if n.type == "recipe" then

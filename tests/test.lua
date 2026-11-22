@@ -897,6 +897,29 @@ do
   print("wireless OK")
 end
 
+-- "built" mark: checkbox / menu toggle, green outline, no effect on the numbers
+do
+  local pb = model.create_project("built")
+  local f = model.add_node(pb, { type = "factory", parent = pb.root })
+  local r = model.add_node(pb, { type = "recipe", recipe = "iron-gear-wheel", machine = "assembling-machine-2", parent = pb.root, fixed = true, value = 2 })
+  local saved_p, saved_f = ps.project, ps.factory
+  ps.project, ps.factory = pb.id, pb.root
+  gui.refresh_all(player, ps)
+  solver.solve_all(pb)
+  local before = pb.results.nodes[r.id].outs["item/iron-gear-wheel"].produced
+  local n_before = rendering.count()
+  handlers.on_gui_checked_state_changed({ player_index = 1, element = { valid = true, state = true, tags = { fm = "built", node = r.id } } })
+  assert(r.built, "recipe marked built")
+  approx(pb.results.nodes[r.id].outs["item/iron-gear-wheel"].produced, before, "numbers unchanged")
+  handlers.on_gui_click({ player_index = 1, element = { valid = true, name = "b", type = "button", tags = { fm = "toggle_built", node = f.id } }, button = 1 })
+  assert(f.built, "factory marked built from the menu")
+  handlers.on_gui_click({ player_index = 1, element = { valid = true, name = "b", type = "button", tags = { fm = "toggle_built", node = f.id } }, button = 1 })
+  assert(not f.built, "unmarked")
+  for _, id in pairs({ r.id, f.id }) do ps.selection = { [id] = true } gui.refresh_inspector(player, ps) end
+  ps.project, ps.factory = saved_p, saved_f
+  print("built mark OK")
+end
+
 -- fuel for burner furnaces
 do
   local p7 = model.create_project("fuel")

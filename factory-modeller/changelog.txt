@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.6.0
+Date: 22. 11. 2026
+  Features:
+    - "Built in the world" checkbox for recipe blocks and "Factory built" for factories: marked blocks get a green outline. Also available from the right-click menu.
+---------------------------------------------------------------------------------------------------
 Version: 0.5.1
 Date: 20. 11. 2026
   Changes:
